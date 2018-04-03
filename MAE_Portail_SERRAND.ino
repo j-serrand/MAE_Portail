@@ -40,6 +40,11 @@ const int distance_detection=5;
 //Bibliothèque pour utiliser le timer
 #include <FlexiTimer2.h>
 
+//Bibliothèques et paramétrage pour le lcd
+#include <Wire.h>
+#include "rgb_lcd.h"
+rgb_lcd lcd;
+
 /*******************************************************************
                         PINS DES COMPOSANTS
 ********************************************************************/
@@ -55,7 +60,7 @@ const int emetteur_IR = 5;
 ********************************************************************/
 int etat_courant=0;
 boolean demande_envoi_trame=false,BP=false,NFC=false,FDCO=false,FDCF=false,IR=false,PV=false; //Capteurs
-boolean Ouverture_Set=false,Ouverture_Reset=false,voiture_genante=false;
+boolean Fermeture_Set=false,Fermeture_Reset=false,Ouverture_Set=false,Ouverture_Reset=false,voiture_genante=false;
 volatile boolean fin_tempo=false; //Variable d'interruption de fin de temporisation
 
 /*******************************************************************
@@ -71,6 +76,10 @@ void macro_fin_timer(void)
 ********************************************************************/
 void setup()
 {
+  lcd.setCursor(0, 0);
+  lcd.print("Initialisation");
+  delay(3000);
+
   pinMode(bp_int, INPUT);
   pinMode(fdc_ouverture, INPUT);
   pinMode(fdc_fermeture, INPUT);
@@ -79,9 +88,13 @@ void setup()
   pinMode(fermeture,OUTPUT);
   pinMode(emetteur_IR,OUTPUT);
 
+  lcd.setCursor(0, 0);
+  lcd.print("Initialisation NFC");
   nfc.begin();//Démarrage du module NFC
   digitalWrite(emetteur_IR, HIGH); //Activation de la barrière infrarouge
   FlexiTimer2::set(5000,macro_fin_timer); //paramétrage du timer
+
+  lcd.begin(16, 2); //Initialisation du lcd
 }
 
 /*******************************************************************
@@ -121,7 +134,7 @@ boolean lecture_presence_voiture(void)
 ********************************************************************/
 void envoi_trame(void)
 {
-  
+
 }
 
 /*******************************************************************
@@ -325,6 +338,10 @@ void loop()
 
   while(1)
   {
+    lcd.setCursor(0, 0);
+    lcd.print("Etat MAE = ");
+    lcd.print(etat_courant);
     traitement_MAE();
+
   }
 }
