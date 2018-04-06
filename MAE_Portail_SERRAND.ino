@@ -76,9 +76,11 @@ void macro_fin_timer(void)
 ********************************************************************/
 void setup()
 {
+  lcd.begin(16, 2); //Initialisation du lcd
   lcd.setCursor(0, 0);
   lcd.print("Initialisation");
   delay(3000);
+  lcd.clear();
 
   pinMode(bp_int, INPUT);
   pinMode(fdc_ouverture, INPUT);
@@ -93,8 +95,6 @@ void setup()
   nfc.begin();//Démarrage du module NFC
   digitalWrite(emetteur_IR, HIGH); //Activation de la barrière infrarouge
   FlexiTimer2::set(5000,macro_fin_timer); //paramétrage du timer
-
-  lcd.begin(16, 2); //Initialisation du lcd
 }
 
 /*******************************************************************
@@ -216,6 +216,7 @@ int evolution(void)
 
     default: etat_s=0;
   }
+  return etat_s;
 }
 
 /*******************************************************************
