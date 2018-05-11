@@ -25,17 +25,19 @@
 ***************************************************************************************************************************************/
 
 //Bibliothèques et paramétrage pour le NFC
-//#include "PN532_HSU.h"
-// #include "PN532.h"
-// #include "NfcAdapter.h"
-// PN532_HSU interface(Serial); //Connexion du module Grove NFC sur le serial 1
-// NfcAdapter nfc = NfcAdapter(interface);
-// String const myUID = "7A F3 96 34"; // Définition du code UID qui garantie l'autorisation
+#include <Wire.h>
+#include <PN532_I2C.h>
+#include <PN532.h>
+#include <NfcAdapter.h>
+PN532_I2C pn532_i2c(Wire);
+NfcAdapter nfc = NfcAdapter(pn532_i2c);
+String const myUID = "7A F3 96 34"; // Définition du code UID qui garantie l'autorisation
+String scannedUID;
 
 //Bibliothèques et paramétrage pour le module ultrason
 #include "Ultrasonic.h"
-Ultrasonic ultrasonic(12);
-const int distance_detection=10;
+Ultrasonic ultrasonic(13);
+const int distance_detection=5;
 
 //Bibliothèque pour utiliser le timer
 #include <FlexiTimer2.h>
@@ -51,7 +53,7 @@ const int distance_detection=10;
 const int fdc_fermeture = A2;
 const int fdc_ouverture = A1;
 const int bp_int = A0;
-const int recepteur_IR = A5;
+const int recepteur_IR = 3;//A5;
 const int ouverture = 10;
 const int fermeture = 11;
 const int emetteur_IR = 5;
@@ -59,7 +61,7 @@ const int emetteur_IR = 5;
                               VARIABLES
 ********************************************************************/
 int etat_courant=0;
-//boolean NFC=false;
+boolean NFC=false;
 boolean demande_envoi_trame=false,BP=false,FDCO=false,FDCF=false,IR=false,PV=false; //Capteurs
 boolean Fermeture_Set=false,Fermeture_Reset=false,Ouverture_Set=false,Ouverture_Reset=false;
 boolean voiture_genante=false,voiture_genante_Set=false,voiture_genante_Reset=false;
@@ -78,11 +80,7 @@ void macro_fin_timer(void)
 ********************************************************************/
 void setup()
 {
-  // lcd.begin(16, 2); //Initialisation du lcd
-  // lcd.setCursor(0, 0);
-  // lcd.print("Initialisation");
-  // delay(3000);
-  // lcd.clear();
+  Serial.println("Initialisation");
 
   Serial.begin(9600);
 
@@ -94,9 +92,9 @@ void setup()
   pinMode(fermeture,OUTPUT);
   pinMode(emetteur_IR,OUTPUT);
 
-  // lcd.setCursor(0, 0);
-  // lcd.print("Initialisation NFC");
-  // nfc.begin();//Démarrage du module NFC
+  Serial.println("Initialisation NFC");
+  nfc.begin();//Démarrage du module NFC
+
   digitalWrite(emetteur_IR, HIGH); //Activation de la barrière infrarouge
   FlexiTimer2::set(5000,macro_fin_timer); //paramétrage du timer
 }
@@ -104,21 +102,24 @@ void setup()
 /*******************************************************************
                           LECTURE NFC
 ********************************************************************/
-// boolean lire_carte_nfc(void)
-// {
-//   boolean resultat=false;
-//   String scannedUID;//Variable de stockage de l'UID de la carte lue
-//   if (nfc.tagPresent())
-//   {
-//     NfcTag tag = nfc.read(); //Lecture de la carte NFC
-//     scannedUID = tag.getUidString(); //Acquisition du code UID de la carte
-//
-//     if( myUID.compareTo(scannedUID) == 0) //Comparaison entre les deux chaînes de caractères
-//        return resultat=true; // Dans le cas où elles sont identiques
-//     else
-//        return resultat=false; //Dans le cas où elles diffèrent
-//   }
-// }
+boolean lire_carte_nfc(void)
+{
+  boolean resultat=false;
+  String scannedUID;//Variable de stockage de l'UID de la carte lue
+  //Serial.println("Macro lire_carte_nfc");
+  if (nfc.tagPresent(10))
+  {
+    //Serial.println("Lecture carte NFC");
+    NfcTag tag = nfc.read(); //Lecture de la carte NFC
+    scannedUID = tag.getUidString(); //Acquisition du code UID de la carte
+
+    if( myUID.compareTo(scannedUID) == 0) //Comparaison entre les deux chaînes de caractères
+       resultat=true; // Dans le cas où elles sont identiques
+    else
+       resultat=false; //Dans le cas où elles diffèrent
+  }
+  return resultat;
+}
 
 /*******************************************************************
                     LECTURE PRESENCE VOITURE
@@ -128,9 +129,11 @@ boolean lecture_presence_voiture(void)
   boolean resultat=false;
 
   if (ultrasonic.MeasureInCentimeters()<distance_detection)
-    return resultat=true;
+    resultat=true;
   else
-    return resultat=false;
+    resultat=false;
+
+  return resultat;
 }
 
 /*******************************************************************
@@ -147,11 +150,11 @@ void envoi_trame(void)
 void lecture_memorisation_entrees(void)
 {
   BP=digitalRead(bp_int);
-  //NFC=lire_carte_nfc();
+  NFC=lire_carte_nfc();
   FDCO=digitalRead(fdc_ouverture);
   FDCF=digitalRead(fdc_fermeture);
   IR=digitalRead(recepteur_IR);
-  PV=lecture_presence_voiture();
+  //PV=lecture_presence_voiture();
 }
 
 /*******************************************************************
@@ -163,7 +166,7 @@ int evolution(void)
 
   switch(etat_courant)
   {
-    case 0: if(BP) //if(NFC||BP)
+    case 0: if(NFC||BP)
               etat_s=1;
             else
               {
@@ -211,7 +214,7 @@ int evolution(void)
               etat_s=0;
             else
               {
-                if(BP) //if(NFC||BP)
+                if(NFC||BP)
                   etat_s=1;
                 else
                   {
@@ -323,6 +326,7 @@ void actions_sur_etat(void)
   {
     case 0: Fermeture_Reset=true;
             FlexiTimer2::stop(); //Arrêt de la tempo
+            //PV=lecture_presence_voiture(); //Lecture capteur ultrason
             break;
     case 1: Fermeture_Reset=true;
             break;
@@ -366,17 +370,35 @@ void traitement_MAE(void)
 void loop()
 {
   etat_courant=0;
+  int etat_courant_prec=0;
+  boolean voiture_genante_prec=false;
+  boolean PV_prec=false;
+
+  Serial.println("-----------------------------------");
+  Serial.print("Etat MAE = ");
+  Serial.println(etat_courant);
+  Serial.print("Presence voiture = ");
+  Serial.println(PV);
+  Serial.print("Voiture génante = ");
+  Serial.println(voiture_genante);
 
   while(1)
   {
     //lcd.setCursor(0, 0);
-    Serial.println("-----------------------------------");
-    Serial.print("Etat MAE = ");
-    Serial.println(etat_courant);
-    Serial.print("Presence voiture = ");
-    Serial.println(PV);
-    Serial.print("Voiture génante = ");
-    Serial.println(voiture_genante);
+    if ((etat_courant!=etat_courant_prec) || (PV_prec!=PV) || (voiture_genante_prec!=voiture_genante))
+    {
+      Serial.println("-----------------------------------");
+      Serial.print("Etat MAE = ");
+      Serial.println(etat_courant);
+      Serial.print("Presence voiture = ");
+      Serial.println(PV);
+      Serial.print("Voiture génante = ");
+      Serial.println(voiture_genante);
+      etat_courant_prec=etat_courant;
+      PV_prec=PV;
+      voiture_genante_prec=voiture_genante;
+    }
+
     traitement_MAE();
 
   }
