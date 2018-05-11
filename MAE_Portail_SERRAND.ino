@@ -5,7 +5,7 @@
    Auteur ...... : Joris SERRAND
    Etablissement : Lycée Louis Rascol, Albi, FRANCE <http://louis-rascol.entmip.fr/>
    Mail ........ : joris.serrand@rascol.net
-   Version ..... : V1.1 du 06/09/17
+   Version ..... : V2.0 du 11/05/18
    Licence ..... : Copyright (C) 2018  SERRAND Joris
 
    This program is free software: you can redistribute it and/or modify
